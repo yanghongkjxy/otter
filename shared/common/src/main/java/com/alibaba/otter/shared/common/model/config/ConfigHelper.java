@@ -38,7 +38,7 @@ import com.alibaba.otter.shared.common.model.config.data.DataMediaPair;
 import com.alibaba.otter.shared.common.model.config.data.DataMediaSource;
 import com.alibaba.otter.shared.common.model.config.pipeline.Pipeline;
 import com.google.common.base.Function;
-import com.google.common.collect.MapMaker;
+import com.google.common.collect.OtterMigrateMap;
 
 /**
  * 常用的config处理帮助类
@@ -49,7 +49,7 @@ import com.google.common.collect.MapMaker;
 public class ConfigHelper {
 
     public static final String          MODE_PATTERN = "(.*)(\\[(\\d+)\\-(\\d+)\\])(.*)"; // 匹配offer[1-128]
-    private static Map<String, Pattern> patterns     = new MapMaker().makeComputingMap(new Function<String, Pattern>() {
+    private static Map<String, Pattern> patterns     = OtterMigrateMap.makeComputingMap(new Function<String, Pattern>() {
 
                                                          public Pattern apply(String input) {
                                                              PatternCompiler pc = new Perl5Compiler();
@@ -95,6 +95,31 @@ public class ConfigHelper {
         for (DataMediaPair pair : pipeline.getPairs()) {
             if (isMatch(pair.getSource(), namespace, name)) {
                 return pair.getSource();
+            }
+        }
+
+        if (notExistReturnNull) {
+            return null;
+        } else {
+            throw new ConfigException("no such DataMedia , the namespace = " + namespace + " name = " + name);
+        }
+    }
+
+    /**
+     * 根据NameSpace和Name得到对应的DataMediaPair.
+     */
+    public static DataMediaPair findDataMediaPairBySourceName(Pipeline pipeline, String namespace, String name) {
+        return findDataMediaPairBySourceName(pipeline, namespace, name, false);
+    }
+
+    /**
+     * 根据NameSpace和Name得到对应的DataMediaPair
+     */
+    public static DataMediaPair findDataMediaPairBySourceName(Pipeline pipeline, String namespace, String name,
+                                                              boolean notExistReturnNull) {
+        for (DataMediaPair pair : pipeline.getPairs()) {
+            if (isMatch(pair.getSource(), namespace, name)) {
+                return pair;
             }
         }
 

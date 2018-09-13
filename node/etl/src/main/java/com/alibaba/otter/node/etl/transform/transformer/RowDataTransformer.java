@@ -27,6 +27,7 @@ import org.springframework.util.CollectionUtils;
 
 import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
 import com.alibaba.otter.node.etl.common.db.dialect.DbDialectFactory;
+import com.alibaba.otter.node.etl.common.db.utils.DdlUtils;
 import com.alibaba.otter.node.etl.transform.exception.TransformException;
 import com.alibaba.otter.shared.common.model.config.ConfigHelper;
 import com.alibaba.otter.shared.common.model.config.data.ColumnPair;
@@ -75,9 +76,20 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
                 result.setSql(data.getSql());
                 return result;
             } else {
-                throw new TransformException("no support ddl for [" + data.getSchemaName() + "." + data.getTableName()
-                                             + "] to [" + result.getSchemaName() + "." + result.getTableName()
-                                             + "] , sql :" + data.getSql());
+                // 动态转换ddl sql,替换库名和表名
+                String sql = DdlUtils.convert(data.getSql(),
+                    data.getSchemaName(),
+                    data.getTableName(),
+                    result.getSchemaName(),
+                    result.getTableName());
+                result.setDdlSchemaName(result.getSchemaName());
+                result.setSql(sql);
+                return result;
+                // throw new TransformException("no support ddl for [" +
+                // data.getSchemaName() + "." + data.getTableName()
+                // + "] to [" + result.getSchemaName() + "." +
+                // result.getTableName()
+                // + "] , sql :" + data.getSql());
             }
         }
 
@@ -198,7 +210,10 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
                     tnewPks.add(tnewPk);
                     // 转化old pk，这里不能再用translateColumnNames了，因为转化new
                     // pk已经remove过一次view name了
-                    toldPks.add(translateColumn(tnewPk, oldPk.getColumnValue(), dataMediaPair));
+                    EventColumn transEventColumn = translateColumn(tnewPk, oldPk.getColumnValue(), dataMediaPair);
+                    // modify by yuyiding 20180725 主键的isupdate还是oldpk的isupdate
+                    transEventColumn.setUpdate(oldPk.isUpdate());
+                    toldPks.add(transEventColumn);
                 }
             }
 
